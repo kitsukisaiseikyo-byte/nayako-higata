@@ -374,7 +374,7 @@ def save_latest_json(timestamp, tidal_result, tide_result, image_filename):
 
 # --- メイン処理 ---
 if __name__ == "__main__":
-    timestamp = datetime.now()
+    timestamp = datetime.now(JST)
     print(f"\n{'='*70}")
     print(f"🌊 干潟監視システム実行: {timestamp.strftime('%Y-%m-%d %H:%M:%S')}")
     print(f"{'='*70}\n")
