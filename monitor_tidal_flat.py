@@ -9,12 +9,15 @@ import requests
 from bs4 import BeautifulSoup
 import cv2
 import numpy as np
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 from urllib.parse import urljoin
 import os
 import sys
 import csv
 import json
+
+# 日本時間のタイムゾーン
+JST = timezone(timedelta(hours=9))
 
 # --- 設定項目 ---
 MAIN_CAMERA_PAGE_URL = "https://www.kitsukibousai.jp/camera.html?no=4"
