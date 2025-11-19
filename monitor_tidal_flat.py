@@ -342,7 +342,7 @@ if __name__ == "__main__":
     )
     
     # 3. 潮位推定
-    is_night = tidal_result['is_night'] if tidal_result else False
+    is_night = tidal_result.get('is_night', False) if tidal_result else False
     tide_result = estimate_tide_level(
         current_image,
         TIDE_X_START, TIDE_X_END,
