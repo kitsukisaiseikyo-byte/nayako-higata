@@ -1,0 +1,2 @@
+"timestamp","is_tidal_flat","status","confidence","brightness_ratio","saturation_ratio","blue_ratio","texture_std","tide_level","tide_status","water_line_y","image_file"
+"2025-11-19T14:34:40.847805+09:00",True,"干潟あり",100,"0.894","0.759","0.000","19.28","0.556","中潮",210,"capture_20251119_143440.jpg"
