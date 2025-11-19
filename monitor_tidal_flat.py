@@ -47,6 +47,7 @@ SATURATION_MAX = 50
 RESULTS_DIR = "results"
 IMAGES_DIR = os.path.join(RESULTS_DIR, "images")
 CSV_FILE = os.path.join(RESULTS_DIR, "monitoring_log.csv")
+CSV_FILE_SJIS = os.path.join(RESULTS_DIR, "monitoring_log_sjis.csv")  # Shift-JIS版
 LATEST_JSON = os.path.join(RESULTS_DIR, "latest_result.json")
 
 os.makedirs(IMAGES_DIR, exist_ok=True)
@@ -317,7 +318,7 @@ def save_to_csv(timestamp, tidal_result, tide_result, image_filename):
     csv_exists = os.path.exists(CSV_FILE)
     
     with open(CSV_FILE, 'a', newline='', encoding='utf-8') as f:
-        writer = csv.writer(f)
+        writer = csv.writer(f, quoting=csv.QUOTE_NONNUMERIC)  # すべてクォートで囲む
         
         if not csv_exists:
             # ヘッダー行
@@ -374,6 +375,7 @@ def save_latest_json(timestamp, tidal_result, tide_result, image_filename):
 
 # --- メイン処理 ---
 if __name__ == "__main__":
+    # 日本時間を取得
     timestamp = datetime.now(JST)
     print(f"\n{'='*70}")
     print(f"🌊 干潟監視システム実行: {timestamp.strftime('%Y-%m-%d %H:%M:%S')}")
