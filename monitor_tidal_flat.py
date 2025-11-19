@@ -28,10 +28,10 @@ ROI_X_END = 630
 
 # 潮位測定用ROI (岸壁の垂直ライン)
 # 画像の上から下まで走査し、水面との境界を検出
-TIDE_X_START = 440  # 岸壁の左端
-TIDE_X_END = 480    # 岸壁の右端
-TIDE_Y_START = 150  # 走査開始位置(上)
-TIDE_Y_END = 350    # 走査終了位置(下)
+TIDE_X_START = 500  # 岸壁の左端
+TIDE_X_END = 550    # 岸壁の右端
+TIDE_Y_START = 190  # 走査開始位置(上)
+TIDE_Y_END = 235    # 走査終了位置(下)
 
 # 判別パラメータ
 RELATIVE_BRIGHTNESS_THRESHOLD = 0.85
@@ -213,37 +213,99 @@ def save_annotated_image(img, tidal_result, tide_result, timestamp):
     cv2.rectangle(img_annotated, 
                   (ROI_X_START, ROI_Y_START), 
                   (ROI_X_END, ROI_Y_END),
-                  (0, 255, 0), 2)
+                  (0, 255, 0), 3)
+    
+    # ROIラベル
+    cv2.putText(img_annotated, "Tidal Flat ROI",
+                (ROI_X_START, ROI_Y_START - 10),
+                cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
     
     # 潮位測定ラインを描画
     if tide_result:
         cv2.rectangle(img_annotated,
                       (TIDE_X_START, TIDE_Y_START),
                       (TIDE_X_END, TIDE_Y_END),
-                      (255, 0, 0), 2)
+                      (255, 0, 0), 3)
+        
+        # 潮位測定ラベル
+        cv2.putText(img_annotated, "Tide Level",
+                    (TIDE_X_START, TIDE_Y_START - 10),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 0, 0), 2)
         
         # 水面ラインを描画
         water_y = int(tide_result['water_line_y'])
         cv2.line(img_annotated,
-                 (TIDE_X_START - 20, water_y),
-                 (TIDE_X_END + 20, water_y),
+                 (TIDE_X_START - 30, water_y),
+                 (TIDE_X_END + 30, water_y),
                  (0, 0, 255), 3)
+        
+        # 水面ラインのラベル
+        cv2.putText(img_annotated, "Water Surface",
+                    (TIDE_X_END + 40, water_y + 5),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2)
     
-    # 判定結果をテキストで表示
+    # 判定結果を英語で表示
     if tidal_result:
-        cv2.putText(img_annotated, tidal_result['status'],
-                    (10, 30), cv2.FONT_HERSHEY_SIMPLEX,
-                    0.8, (0, 255, 0), 2)
+        # 日本語→英語変換
+        status_map = {
+            "干潟あり": "Tidal Flat: YES",
+            "水面/潮位高": "Tidal Flat: NO",
+            "夜間(解析不可)": "Night (No Analysis)"
+        }
+        status_en = status_map.get(tidal_result['status'], tidal_result['status'])
+        
+        # 背景付きテキスト
+        text_size = cv2.getTextSize(status_en, cv2.FONT_HERSHEY_SIMPLEX, 0.7, 2)[0]
+        cv2.rectangle(img_annotated, (5, 5), (text_size[0] + 15, 35), (0, 0, 0), -1)
+        cv2.putText(img_annotated, status_en,
+                    (10, 25), cv2.FONT_HERSHEY_SIMPLEX,
+                    0.7, (0, 255, 0), 2)
+        
+        # 信頼度
+        confidence_text = f"Confidence: {tidal_result['confidence']}%"
+        cv2.rectangle(img_annotated, (5, 40), (text_size[0] + 15, 65), (0, 0, 0), -1)
+        cv2.putText(img_annotated, confidence_text,
+                    (10, 57), cv2.FONT_HERSHEY_SIMPLEX,
+                    0.5, (255, 255, 255), 1)
     
     if tide_result:
-        cv2.putText(img_annotated, tide_result['tide_status'],
-                    (10, 60), cv2.FONT_HERSHEY_SIMPLEX,
-                    0.8, (255, 0, 0), 2)
+        # 潮位状態を英語で表示
+        tide_map = {
+            "満潮": "High Tide",
+            "上げ潮": "Rising",
+            "中潮": "Mid Tide",
+            "下げ潮": "Falling",
+            "干潮": "Low Tide"
+        }
+        tide_en = tide_map.get(tide_result['tide_status'], tide_result['tide_status'])
+        tide_text = f"Tide: {tide_en} ({tide_result['tide_level']:.0%})"
+        
+        text_size2 = cv2.getTextSize(tide_text, cv2.FONT_HERSHEY_SIMPLEX, 0.6, 2)[0]
+        cv2.rectangle(img_annotated, (5, 70), (text_size2[0] + 15, 95), (0, 0, 0), -1)
+        cv2.putText(img_annotated, tide_text,
+                    (10, 87), cv2.FONT_HERSHEY_SIMPLEX,
+                    0.6, (255, 200, 0), 2)
     
-    # 画像保存
+    # タイムスタンプ
+    time_text = timestamp.strftime("%Y-%m-%d %H:%M:%S JST")
+    cv2.rectangle(img_annotated, (5, img_annotated.shape[0] - 30),
+                  (350, img_annotated.shape[0] - 5), (0, 0, 0), -1)
+    cv2.putText(img_annotated, time_text,
+                (10, img_annotated.shape[0] - 10),
+                cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1)
+    
+    # 画像保存 (JPEG品質を明示的に指定)
     filename = f"capture_{timestamp.strftime('%Y%m%d_%H%M%S')}.jpg"
     filepath = os.path.join(IMAGES_DIR, filename)
-    cv2.imwrite(filepath, img_annotated)
+    
+    # JPEG保存パラメータを指定
+    encode_param = [int(cv2.IMWRITE_JPEG_QUALITY), 95]
+    success = cv2.imwrite(filepath, img_annotated, encode_param)
+    
+    if success:
+        print(f"  画像保存成功: {filepath}")
+    else:
+        print(f"  ⚠️ 画像保存失敗: {filepath}", file=sys.stderr)
     
     return filename
 
