@@ -292,14 +292,14 @@ def save_latest_json(timestamp, tidal_result, tide_result, image_filename):
     latest_data = {
         'timestamp': timestamp.isoformat(),
         'tidal_flat': {
-            'detected': tidal_result['is_tidal_flat'] if tidal_result else None,
+            'detected': bool(tidal_result['is_tidal_flat']) if tidal_result and tidal_result['is_tidal_flat'] is not None else None,
             'status': tidal_result['status'] if tidal_result else None,
-            'confidence': tidal_result['confidence'] if tidal_result else None
+            'confidence': int(tidal_result['confidence']) if tidal_result else None
         },
         'tide': {
-            'level': tide_result['tide_level'] if tide_result else None,
+            'level': float(tide_result['tide_level']) if tide_result else None,
             'status': tide_result['tide_status'] if tide_result else None,
-            'water_line_y': tide_result['water_line_y'] if tide_result else None
+            'water_line_y': int(tide_result['water_line_y']) if tide_result else None
         },
         'image_file': image_filename
     }
