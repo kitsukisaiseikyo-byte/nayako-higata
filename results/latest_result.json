@@ -1,5 +1,5 @@
 {
-  "timestamp": "2025-11-20T14:43:31.323719+09:00",
+  "timestamp": "2025-11-20T15:35:03.315031+09:00",
   "tidal_flat": {
     "detected": null,
     "status": "夜間(解析不可)",
@@ -10,5 +10,5 @@
     "status": null,
     "water_line_y": null
   },
-  "image_file": "capture_20251120_144331.jpg"
+  "image_file": "capture_20251120_153503.jpg"
 }
