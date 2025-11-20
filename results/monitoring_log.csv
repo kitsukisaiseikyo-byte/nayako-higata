@@ -1,0 +1,2 @@
+"timestamp","is_tidal_flat","status","confidence","brightness_ratio","saturation_ratio","blue_ratio","texture_std","tide_level","tide_status","water_line_y","image_file"
+"2025-11-20T16:01:52.594383+09:00",True,"Tidal Flat Detected",80,"0.803","0.383","0.138","9.86","0.600","Mid Tide",208,"capture_20251120_160152.jpg"
