@@ -26,7 +26,7 @@ BASE_IMAGE_URL = "https://www.kitsukibousai.jp"
 
 # ROI設定 (干潟検出用 - 下部に集中)
 ROI_Y_START = 270  # 200→270 上端を下げる
-ROI_Y_END = 350    # 下端はそのまま
+ROI_Y_END = 360    # 下端はそのまま
 ROI_X_START = 380
 ROI_X_END = 630
 
