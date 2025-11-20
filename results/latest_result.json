@@ -1,14 +1,14 @@
 {
-  "timestamp": "2025-11-20T10:09:43.515291+09:00",
+  "timestamp": "2025-11-20T12:45:01.939738+09:00",
   "tidal_flat": {
-    "detected": false,
-    "status": "水面/潮位高",
-    "confidence": 25
+    "detected": null,
+    "status": "夜間(解析不可)",
+    "confidence": 0
   },
   "tide": {
-    "level": 0.5777777777777777,
-    "status": "中潮",
-    "water_line_y": 209
+    "level": null,
+    "status": null,
+    "water_line_y": null
   },
-  "image_file": "capture_20251120_100943.jpg"
+  "image_file": "capture_20251120_124501.jpg"
 }
