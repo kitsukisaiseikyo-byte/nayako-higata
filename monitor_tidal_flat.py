@@ -1,8 +1,8 @@
 """
-干潟監視システム - GitHub Actions用 (完全修正版)
+干潟監視システム - GitHub Actions用 (潮位推定強化版)
 - 30分ごとの自動実行
 - CSV形式でデータ蓄積 (UTF-8 + Shift-JIS)
-- 潮位推定機能付き
+- 潮位推定機能付き (ハフ変換による直線検出採用)
 - 判定精度向上
 """
 
@@ -16,6 +16,7 @@ import os
 import sys
 import csv
 import json
+import math
 
 # 日本時間のタイムゾーン
 JST = timezone(timedelta(hours=9))
@@ -25,23 +26,24 @@ MAIN_CAMERA_PAGE_URL = "https://www.kitsukibousai.jp/camera.html?no=4"
 BASE_IMAGE_URL = "https://www.kitsukibousai.jp"
 
 # ROI設定 (干潟検出用 - 下部に集中)
-ROI_Y_START = 270  # 200→270 上端を下げる
-ROI_Y_END = 360    # 下端はそのまま
+ROI_Y_START = 270  
+ROI_Y_END = 350    
 ROI_X_START = 380
 ROI_X_END = 630
 
 # 潮位測定用ROI (岸壁の垂直ライン)
+# ※注意: ROIの幅が狭すぎると直線検出が難しくなるため、必要に応じてXの幅を広げてください
 TIDE_X_START = 500
 TIDE_X_END = 550
 TIDE_Y_START = 190
 TIDE_Y_END = 235
 
-# 判別パラメータ (さらに緩和 - 2025/11/20 15:00修正)
-RELATIVE_BRIGHTNESS_THRESHOLD = 0.80  # 1.05→0.80 大幅緩和
-SATURATION_RATIO_MAX = 0.75           # 0.70→0.75 少し緩和
-BLUE_RATIO_MAX = 0.15                 # 0.10→0.15 少し緩和
-TEXTURE_THRESHOLD = 12                # 20→12 大幅緩和
-BRIGHTNESS_THRESHOLD_MIN = 70         # 夜間除外
+# 判別パラメータ
+RELATIVE_BRIGHTNESS_THRESHOLD = 0.80
+SATURATION_RATIO_MAX = 0.75
+BLUE_RATIO_MAX = 0.15
+TEXTURE_THRESHOLD = 12
+BRIGHTNESS_THRESHOLD_MIN = 70
 
 # 出力ディレクトリ
 RESULTS_DIR = "results"
@@ -85,19 +87,75 @@ def download_image(url):
         return None
 
 def estimate_tide_level(img, x_start, x_end, y_start, y_end, is_night=False):
-    """岸壁の垂直ラインから潮位を推定"""
+    """
+    岸壁のラインから潮位を推定 (ハフ変換による直線検出版)
+    """
     if img is None or is_night:
         return None
     
-    img_height = img.shape[0]
-    tide_roi = img[y_start:y_end, x_start:x_end]
-    gray_roi = cv2.cvtColor(tide_roi, cv2.COLOR_BGR2GRAY)
-    vertical_profile = np.mean(gray_roi, axis=1)
-    gradient = np.gradient(vertical_profile)
-    water_line_relative = np.argmin(gradient)
+    # ROI切り出し
+    roi = img[y_start:y_end, x_start:x_end]
+    
+    # グレースケール変換
+    gray_roi = cv2.cvtColor(roi, cv2.COLOR_BGR2GRAY)
+    
+    # 1. ノイズ除去 (ガウシアンブラー)
+    # 波の細かい模様を消して、主要なエッジだけ残す
+    blurred = cv2.GaussianBlur(gray_roi, (5, 5), 0)
+    
+    # 2. エッジ検出 (Canny法)
+    # 閾値は環境によって微調整が必要だが、一旦標準的な値で設定
+    edges = cv2.Canny(blurred, 50, 150)
+    
+    # 3. 直線検出 (確率的ハフ変換)
+    # minLineLength: 誤検知を減らすため、ROI幅の半分以上の長さがある線のみ採用
+    roi_width = x_end - x_start
+    min_line_len = roi_width * 0.4 
+    
+    lines = cv2.HoughLinesP(
+        edges, 
+        rho=1, 
+        theta=np.pi/180, 
+        threshold=15,         # 投票数の閾値 (低いほど検出しやすいがノイズも増える)
+        minLineLength=min_line_len, 
+        maxLineGap=10         # 線が途切れていても許容する隙間
+    )
+    
+    water_line_relative = None
+    
+    if lines is not None:
+        # 検出された線の中から「水平に近い」線のみを抽出
+        valid_y_coords = []
+        for line in lines:
+            x1, y1, x2, y2 = line[0]
+            # 角度計算 (ラジアン -> 度)
+            angle = math.degrees(math.atan2(y2 - y1, x2 - x1))
+            
+            # 水平に近い線 (±15度以内) のみを採用
+            if abs(angle) < 15:
+                # 線のY座標の中点をリストに追加
+                valid_y_coords.append((y1 + y2) / 2)
+        
+        if valid_y_coords:
+            # 複数の線が見つかった場合、中央値を採用して外れ値を除去
+            water_line_relative = np.median(valid_y_coords)
+            print(f"  直線検出成功: {len(valid_y_coords)}本検出, Y={water_line_relative:.1f}")
+
+    # 直線が見つからなかった場合のフォールバック (従来の輝度変化法)
+    if water_line_relative is None:
+        print("  ⚠️ 直線検出失敗 -> 輝度勾配法(バックアップ)を使用")
+        vertical_profile = np.mean(gray_roi, axis=1)
+        gradient = np.gradient(vertical_profile)
+        water_line_relative = np.argmin(gradient)
+
+    # 潮位計算
     water_line_absolute = y_start + water_line_relative
     tide_range = y_end - y_start
+    
+    # 下に行くほどY座標が大きくなるため、(1 - 比率) で水位が高いほど1.0に近づける
     tide_level_normalized = 1.0 - (water_line_relative / tide_range)
+    # 範囲制限 (0.0 ~ 1.0)
+    tide_level_normalized = max(0.0, min(1.0, tide_level_normalized))
     
     if tide_level_normalized > 0.8:
         tide_status = "満潮"
@@ -114,13 +172,13 @@ def estimate_tide_level(img, x_start, x_end, y_start, y_end, is_night=False):
         'water_line_y': water_line_absolute,
         'tide_level': tide_level_normalized,
         'tide_status': tide_status,
-        'vertical_profile': vertical_profile.tolist()
+        'method': 'hough_lines' if lines is not None else 'gradient_fallback'
     }
 
 def analyze_tidal_flat(img, roi_y_start, roi_y_end, roi_x_start, roi_x_end,
-                      relative_brightness_threshold, saturation_ratio_max,
-                      blue_ratio_max, texture_threshold, brightness_min):
-    """干潟判別分析 (改善版)"""
+                       relative_brightness_threshold, saturation_ratio_max,
+                       blue_ratio_max, texture_threshold, brightness_min):
+    """干潟判別分析"""
     if img is None:
         return None
     
@@ -146,8 +204,7 @@ def analyze_tidal_flat(img, roi_y_start, roi_y_end, roi_x_start, roi_x_end,
     full_saturation = np.mean(hsv_full[:,:,1])
     saturation_ratio = roi_saturation / (full_saturation + 0.001)
     
-    # 青色比率 (さらに厳格化 - 水面は青が多い)
-    # 色相(H)が90-130度、彩度(S)が30以上、明度(V)が30以上
+    # 青色比率
     blue_mask = cv2.inRange(hsv_roi, (85, 30, 30), (135, 255, 255))
     blue_ratio = np.sum(blue_mask > 0) / (roi.shape[0] * roi.shape[1])
     
@@ -157,12 +214,12 @@ def analyze_tidal_flat(img, roi_y_start, roi_y_end, roi_x_start, roi_x_end,
     
     print(f"\n📊 解析結果:")
     print(f"  • ROI輝度:        {roi_brightness:.2f} / {full_brightness:.2f}")
-    print(f"  • 輝度比率:       {brightness_ratio:.3f} (閾値: >{relative_brightness_threshold}) {'✓' if brightness_ratio > relative_brightness_threshold else '✗'}")
-    print(f"  • 彩度比率:       {saturation_ratio:.3f} (閾値: <{saturation_ratio_max}) {'✓' if saturation_ratio < saturation_ratio_max else '✗'}")
-    print(f"  • 青色比率:       {blue_ratio:.3%} (閾値: <{blue_ratio_max}) {'✓' if blue_ratio < blue_ratio_max else '✗'}")
-    print(f"  • テクスチャ:     {texture_std:.2f} (閾値: >{texture_threshold}) {'✓' if texture_std > texture_threshold else '✗'}")
+    print(f"  • 輝度比率:       {brightness_ratio:.3f} (閾値: >{relative_brightness_threshold})")
+    print(f"  • 彩度比率:       {saturation_ratio:.3f} (閾値: <{saturation_ratio_max})")
+    print(f"  • 青色比率:       {blue_ratio:.3%} (閾値: <{blue_ratio_max})")
+    print(f"  • テクスチャ:     {texture_std:.2f} (閾値: >{texture_threshold})")
     
-    # 夜間チェック (ROI輝度が低すぎる場合のみ)
+    # 夜間チェック
     if roi_brightness < brightness_min:
         print(f"\n⚠️  夜間判定 (ROI輝度 {roi_brightness:.2f} < {brightness_min})")
         return {
@@ -178,7 +235,6 @@ def analyze_tidal_flat(img, roi_y_start, roi_y_end, roi_x_start, roi_x_end,
             'is_night': True
         }
     
-    # 曇天・雨天対応: 全体輝度も確認
     if full_brightness < 60:
         print(f"\n⚠️  全体が暗すぎる (全体輝度 {full_brightness:.2f} < 60)")
         return {
@@ -194,11 +250,10 @@ def analyze_tidal_flat(img, roi_y_start, roi_y_end, roi_x_start, roi_x_end,
             'is_night': True
         }
     
-    # 判定ロジック (より厳格に)
+    # 判定ロジック
     conditions = []
     scores = []
     
-    # 条件1: 相対的に明るい
     if brightness_ratio > relative_brightness_threshold:
         conditions.append("✓ 相対的に明るい")
         scores.append(30)
@@ -206,7 +261,6 @@ def analyze_tidal_flat(img, roi_y_start, roi_y_end, roi_x_start, roi_x_end,
         conditions.append("✗ 明るさ不足")
         scores.append(0)
     
-    # 条件2: 彩度が低い
     if saturation_ratio < saturation_ratio_max:
         conditions.append("✓ 彩度が低い")
         scores.append(25)
@@ -214,7 +268,6 @@ def analyze_tidal_flat(img, roi_y_start, roi_y_end, roi_x_start, roi_x_end,
         conditions.append("✗ 彩度が高い")
         scores.append(0)
     
-    # 条件3: 青色が少ない
     if blue_ratio < blue_ratio_max:
         conditions.append("✓ 青色少ない")
         scores.append(25)
@@ -222,7 +275,6 @@ def analyze_tidal_flat(img, roi_y_start, roi_y_end, roi_x_start, roi_x_end,
         conditions.append(f"✗ 青色多い({blue_ratio:.1%})")
         scores.append(0)
     
-    # 条件4: テクスチャが不均一
     if texture_std > texture_threshold:
         conditions.append("✓ テクスチャ不均一")
         scores.append(20)
@@ -231,18 +283,8 @@ def analyze_tidal_flat(img, roi_y_start, roi_y_end, roi_x_start, roi_x_end,
         scores.append(0)
     
     confidence_score = sum(scores)
-    
-    # 判定を緩和: 3つ以上の条件を満たせば干潟 (4つすべて→3つに変更)
     conditions_met = sum(s > 0 for s in scores)
     is_tidal_flat = conditions_met >= 3
-    
-    print(f"\n【判定条件】")
-    for i, condition in enumerate(conditions):
-        print(f"  {i+1}. {condition} (スコア: {scores[i]})")
-    
-    print(f"\n【判定結果】")
-    print(f"  条件達成数: {conditions_met}/4")
-    print(f"  総合スコア: {confidence_score}/100")
     
     status = "干潟あり" if is_tidal_flat else "水面/潮位高"
     
@@ -266,35 +308,35 @@ def save_annotated_image(img, tidal_result, tide_result, timestamp):
     
     img_annotated = img.copy()
     
-    # 干潟ROIを描画
+    # 干潟ROI描画
     cv2.rectangle(img_annotated, 
                   (ROI_X_START, ROI_Y_START), 
                   (ROI_X_END, ROI_Y_END),
                   (0, 255, 0), 3)
-    cv2.putText(img_annotated, "Tidal Flat ROI",
-                (ROI_X_START, ROI_Y_START - 10),
-                cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
     
-    # 潮位測定ラインを描画
+    # 潮位測定ライン描画
     if tide_result:
         cv2.rectangle(img_annotated,
                       (TIDE_X_START, TIDE_Y_START),
                       (TIDE_X_END, TIDE_Y_END),
                       (255, 0, 0), 3)
-        cv2.putText(img_annotated, "Tide Level",
-                    (TIDE_X_START, TIDE_Y_START - 10),
-                    cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 0, 0), 2)
         
         water_y = int(tide_result['water_line_y'])
+        
+        # 検出方法によって線の色を変える (ハフ変換=赤, フォールバック=オレンジ)
+        line_color = (0, 0, 255) if tide_result.get('method') == 'hough_lines' else (0, 165, 255)
+        
         cv2.line(img_annotated,
                  (TIDE_X_START - 30, water_y),
                  (TIDE_X_END + 30, water_y),
-                 (0, 0, 255), 3)
-        cv2.putText(img_annotated, "Water Surface",
+                 line_color, 3)
+                 
+        method_str = " (Auto)" if tide_result.get('method') == 'hough_lines' else " (Fallback)"
+        cv2.putText(img_annotated, f"Water Surface{method_str}",
                     (TIDE_X_END + 40, water_y + 5),
-                    cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2)
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.5, line_color, 2)
     
-    # 判定結果を英語で表示
+    # テキスト情報描画
     if tidal_result:
         status_map = {
             "干潟あり": "Tidal Flat: YES",
@@ -354,21 +396,11 @@ def save_annotated_image(img, tidal_result, tide_result, timestamp):
     return filename
 
 def save_to_csv(timestamp, tidal_result, tide_result, image_filename):
-    """CSV形式でデータを保存 (UTF-8は英語、Shift-JISは日本語)"""
-    
+    """CSV形式でデータを保存"""
     headers = [
-        'timestamp',
-        'is_tidal_flat',
-        'status',
-        'confidence',
-        'brightness_ratio',
-        'saturation_ratio',
-        'blue_ratio',
-        'texture_std',
-        'tide_level',
-        'tide_status',
-        'water_line_y',
-        'image_file'
+        'timestamp', 'is_tidal_flat', 'status', 'confidence',
+        'brightness_ratio', 'saturation_ratio', 'blue_ratio', 'texture_std',
+        'tide_level', 'tide_status', 'water_line_y', 'image_file'
     ]
     
     # 日本語→英語マッピング
@@ -377,16 +409,12 @@ def save_to_csv(timestamp, tidal_result, tide_result, image_filename):
         "水面/潮位高": "Water Surface",
         "夜間(解析不可)": "Night (No Analysis)"
     }
-    
     tide_en_map = {
-        "満潮": "High Tide",
-        "上げ潮": "Rising Tide",
-        "中潮": "Mid Tide",
-        "下げ潮": "Falling Tide",
-        "干潮": "Low Tide"
+        "満潮": "High Tide", "上げ潮": "Rising Tide", "中潮": "Mid Tide",
+        "下げ潮": "Falling Tide", "干潮": "Low Tide"
     }
     
-    # 英語版データ行 (UTF-8用)
+    # 英語版データ (UTF-8)
     data_row_en = [
         timestamp.isoformat(),
         tidal_result['is_tidal_flat'] if tidal_result else None,
@@ -402,48 +430,46 @@ def save_to_csv(timestamp, tidal_result, tide_result, image_filename):
         image_filename
     ]
     
-    # 日本語版データ行 (Shift-JIS用)
+    # 日本語版データ (Shift-JIS)
     data_row_ja = [
         timestamp.isoformat(),
         tidal_result['is_tidal_flat'] if tidal_result else None,
-        tidal_result['status'] if tidal_result else None,  # 日本語のまま
+        tidal_result['status'] if tidal_result else None,
         tidal_result['confidence'] if tidal_result else None,
         f"{tidal_result['brightness_ratio']:.3f}" if tidal_result else None,
         f"{tidal_result['saturation_ratio']:.3f}" if tidal_result else None,
         f"{tidal_result['blue_ratio']:.3f}" if tidal_result else None,
         f"{tidal_result['texture_std']:.2f}" if tidal_result else None,
         f"{tide_result['tide_level']:.3f}" if tide_result else None,
-        tide_result['tide_status'] if tide_result else None,  # 日本語のまま
+        tide_result['tide_status'] if tide_result else None,
         tide_result['water_line_y'] if tide_result else None,
         image_filename
     ]
     
-    # UTF-8版を保存 (英語)
+    # UTF-8保存
     csv_exists = os.path.exists(CSV_FILE)
     try:
         with open(CSV_FILE, 'a', newline='', encoding='utf-8') as f:
             writer = csv.writer(f, quoting=csv.QUOTE_NONNUMERIC)
-            if not csv_exists:
-                writer.writerow(headers)
+            if not csv_exists: writer.writerow(headers)
             writer.writerow(data_row_en)
-        print(f"  ✓ CSV(UTF-8/English)保存: {CSV_FILE}")
+        print(f"  ✓ CSV(UTF-8)保存: {CSV_FILE}")
     except Exception as e:
-        print(f"  ⚠️ CSV(UTF-8)保存失敗: {e}", file=sys.stderr)
-    
-    # Shift-JIS版を保存 (日本語)
+        print(f"  ⚠️ CSV保存失敗: {e}", file=sys.stderr)
+        
+    # Shift-JIS保存
     csv_sjis_exists = os.path.exists(CSV_FILE_SJIS)
     try:
         with open(CSV_FILE_SJIS, 'a', newline='', encoding='shift_jis', errors='replace') as f:
             writer = csv.writer(f, quoting=csv.QUOTE_NONNUMERIC)
-            if not csv_sjis_exists:
-                writer.writerow(headers)
+            if not csv_sjis_exists: writer.writerow(headers)
             writer.writerow(data_row_ja)
-        print(f"  ✓ CSV(Shift-JIS/日本語)保存: {CSV_FILE_SJIS}")
+        print(f"  ✓ CSV(Shift-JIS)保存: {CSV_FILE_SJIS}")
     except Exception as e:
-        print(f"  ⚠️ CSV(Shift-JIS)保存失敗: {e}", file=sys.stderr)
+        print(f"  ⚠️ CSV(SJIS)保存失敗: {e}", file=sys.stderr)
 
 def save_latest_json(timestamp, tidal_result, tide_result, image_filename):
-    """最新の結果をJSON形式で保存"""
+    """最新結果をJSON保存"""
     latest_data = {
         'timestamp': timestamp.isoformat(),
         'tidal_flat': {
@@ -458,7 +484,6 @@ def save_latest_json(timestamp, tidal_result, tide_result, image_filename):
         },
         'image_file': image_filename
     }
-    
     with open(LATEST_JSON, 'w', encoding='utf-8') as f:
         json.dump(latest_data, f, ensure_ascii=False, indent=2)
 
@@ -495,7 +520,7 @@ if __name__ == "__main__":
         BRIGHTNESS_THRESHOLD_MIN
     )
     
-    # 潮位推定
+    # 潮位推定 (ハフ変換ロジック搭載)
     is_night = tidal_result.get('is_night', False) if tidal_result else False
     tide_result = estimate_tide_level(
         current_image,
@@ -507,8 +532,7 @@ if __name__ == "__main__":
     # 結果表示
     if tidal_result:
         if tidal_result.get('is_night'):
-            print(f"\n【夜間モード】")
-            print(f"  解析をスキップしました")
+            print(f"\n【夜間モード】解析スキップ")
         else:
             print(f"\n【干潟判定】")
             print(f"  状態: {tidal_result['status']}")
@@ -518,6 +542,7 @@ if __name__ == "__main__":
         print(f"\n【潮位推定】")
         print(f"  状態: {tide_result['tide_status']}")
         print(f"  潮位レベル: {tide_result['tide_level']:.1%}")
+        print(f"  検出手法: {tide_result.get('method')}")
     
     # データ保存
     image_filename = save_annotated_image(current_image, tidal_result, tide_result, timestamp)
