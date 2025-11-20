@@ -1,0 +1,2 @@
+"timestamp","is_tidal_flat","status","confidence","brightness_ratio","saturation_ratio","blue_ratio","texture_std","tide_level","tide_status","water_line_y","image_file"
+"2025-11-20T09:39:21.529113+09:00",False,"水面/潮位高",25,"0.889","0.807","0.000","15.86","0.578","中潮",209,"capture_20251120_093921.jpg"
