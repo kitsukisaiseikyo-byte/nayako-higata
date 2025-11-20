@@ -24,9 +24,9 @@ JST = timezone(timedelta(hours=9))
 MAIN_CAMERA_PAGE_URL = "https://www.kitsukibousai.jp/camera.html?no=4"
 BASE_IMAGE_URL = "https://www.kitsukibousai.jp"
 
-# ROI設定 (干潟検出用)
-ROI_Y_START = 200
-ROI_Y_END = 350
+# ROI設定 (干潟検出用 - 下部に集中)
+ROI_Y_START = 270  # 200→270 上端を下げる
+ROI_Y_END = 350    # 下端はそのまま
 ROI_X_START = 380
 ROI_X_END = 630
 
@@ -36,12 +36,12 @@ TIDE_X_END = 550
 TIDE_Y_START = 190
 TIDE_Y_END = 235
 
-# 判別パラメータ (超厳格化 - 2025/11/21修正)
-RELATIVE_BRIGHTNESS_THRESHOLD = 1.05  # ROIが全体より明るい必要
-SATURATION_RATIO_MAX = 0.70           # 彩度が低い必要
-BLUE_RATIO_MAX = 0.10                 # 青が少ない必要
-TEXTURE_THRESHOLD = 25                # テクスチャ不均一が必須
-BRIGHTNESS_THRESHOLD_MIN = 100        # 夜間除外を強化
+# 判別パラメータ (さらに緩和 - 2025/11/20 15:00修正)
+RELATIVE_BRIGHTNESS_THRESHOLD = 0.80  # 1.05→0.80 大幅緩和
+SATURATION_RATIO_MAX = 0.75           # 0.70→0.75 少し緩和
+BLUE_RATIO_MAX = 0.15                 # 0.10→0.15 少し緩和
+TEXTURE_THRESHOLD = 12                # 20→12 大幅緩和
+BRIGHTNESS_THRESHOLD_MIN = 70         # 夜間除外
 
 # 出力ディレクトリ
 RESULTS_DIR = "results"
@@ -162,9 +162,25 @@ def analyze_tidal_flat(img, roi_y_start, roi_y_end, roi_x_start, roi_x_end,
     print(f"  • 青色比率:       {blue_ratio:.3%} (閾値: <{blue_ratio_max}) {'✓' if blue_ratio < blue_ratio_max else '✗'}")
     print(f"  • テクスチャ:     {texture_std:.2f} (閾値: >{texture_threshold}) {'✓' if texture_std > texture_threshold else '✗'}")
     
-    # 夜間チェック
+    # 夜間チェック (ROI輝度が低すぎる場合のみ)
     if roi_brightness < brightness_min:
-        print(f"\n⚠️  夜間判定 (輝度 {roi_brightness:.2f} < {brightness_min})")
+        print(f"\n⚠️  夜間判定 (ROI輝度 {roi_brightness:.2f} < {brightness_min})")
+        return {
+            'is_tidal_flat': None,
+            'status': "夜間(解析不可)",
+            'confidence': 0,
+            'brightness_ratio': brightness_ratio,
+            'saturation_ratio': saturation_ratio,
+            'blue_ratio': blue_ratio,
+            'texture_std': texture_std,
+            'roi_brightness': roi_brightness,
+            'full_brightness': full_brightness,
+            'is_night': True
+        }
+    
+    # 曇天・雨天対応: 全体輝度も確認
+    if full_brightness < 60:
+        print(f"\n⚠️  全体が暗すぎる (全体輝度 {full_brightness:.2f} < 60)")
         return {
             'is_tidal_flat': None,
             'status': "夜間(解析不可)",
@@ -216,12 +232,17 @@ def analyze_tidal_flat(img, roi_y_start, roi_y_end, roi_x_start, roi_x_end,
     
     confidence_score = sum(scores)
     
-    # 厳格な判定: 4つすべての条件を満たす必要がある
-    is_tidal_flat = all(s > 0 for s in scores)
+    # 判定を緩和: 3つ以上の条件を満たせば干潟 (4つすべて→3つに変更)
+    conditions_met = sum(s > 0 for s in scores)
+    is_tidal_flat = conditions_met >= 3
     
     print(f"\n【判定条件】")
     for i, condition in enumerate(conditions):
         print(f"  {i+1}. {condition} (スコア: {scores[i]})")
+    
+    print(f"\n【判定結果】")
+    print(f"  条件達成数: {conditions_met}/4")
+    print(f"  総合スコア: {confidence_score}/100")
     
     status = "干潟あり" if is_tidal_flat else "水面/潮位高"
     
