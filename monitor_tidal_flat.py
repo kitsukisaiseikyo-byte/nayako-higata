@@ -36,12 +36,12 @@ TIDE_X_END = 550
 TIDE_Y_START = 190
 TIDE_Y_END = 235
 
-# 判別パラメータ (厳格化)
-RELATIVE_BRIGHTNESS_THRESHOLD = 0.95  # より厳しく
-SATURATION_RATIO_MAX = 0.75           # より厳しく
-BLUE_RATIO_MAX = 0.15                 # より厳しく
-TEXTURE_THRESHOLD = 18                # テクスチャ閾値を上げる
-BRIGHTNESS_THRESHOLD_MIN = 80         # 夜間判定を厳格化
+# 判別パラメータ (超厳格化 - 2025/11/21修正)
+RELATIVE_BRIGHTNESS_THRESHOLD = 1.05  # ROIが全体より明るい必要
+SATURATION_RATIO_MAX = 0.70           # 彩度が低い必要
+BLUE_RATIO_MAX = 0.10                 # 青が少ない必要
+TEXTURE_THRESHOLD = 25                # テクスチャ不均一が必須
+BRIGHTNESS_THRESHOLD_MIN = 100        # 夜間除外を強化
 
 # 出力ディレクトリ
 RESULTS_DIR = "results"
@@ -146,8 +146,9 @@ def analyze_tidal_flat(img, roi_y_start, roi_y_end, roi_x_start, roi_x_end,
     full_saturation = np.mean(hsv_full[:,:,1])
     saturation_ratio = roi_saturation / (full_saturation + 0.001)
     
-    # 青色比率 (範囲を広げて感度向上)
-    blue_mask = cv2.inRange(hsv_roi, (90, 40, 40), (130, 255, 255))
+    # 青色比率 (さらに厳格化 - 水面は青が多い)
+    # 色相(H)が90-130度、彩度(S)が30以上、明度(V)が30以上
+    blue_mask = cv2.inRange(hsv_roi, (85, 30, 30), (135, 255, 255))
     blue_ratio = np.sum(blue_mask > 0) / (roi.shape[0] * roi.shape[1])
     
     # テクスチャ分析
@@ -155,12 +156,11 @@ def analyze_tidal_flat(img, roi_y_start, roi_y_end, roi_x_start, roi_x_end,
     texture_std = np.std(roi_gray)
     
     print(f"\n📊 解析結果:")
-    print(f"  • ROI輝度:        {roi_brightness:.2f}")
-    print(f"  • 全体輝度:       {full_brightness:.2f}")
-    print(f"  • 輝度比率:       {brightness_ratio:.3f} (閾値: >{relative_brightness_threshold})")
-    print(f"  • 彩度比率:       {saturation_ratio:.3f} (閾値: <{saturation_ratio_max})")
-    print(f"  • 青色比率:       {blue_ratio:.3%} (閾値: <{blue_ratio_max})")
-    print(f"  • テクスチャ:     {texture_std:.2f} (閾値: >{texture_threshold})")
+    print(f"  • ROI輝度:        {roi_brightness:.2f} / {full_brightness:.2f}")
+    print(f"  • 輝度比率:       {brightness_ratio:.3f} (閾値: >{relative_brightness_threshold}) {'✓' if brightness_ratio > relative_brightness_threshold else '✗'}")
+    print(f"  • 彩度比率:       {saturation_ratio:.3f} (閾値: <{saturation_ratio_max}) {'✓' if saturation_ratio < saturation_ratio_max else '✗'}")
+    print(f"  • 青色比率:       {blue_ratio:.3%} (閾値: <{blue_ratio_max}) {'✓' if blue_ratio < blue_ratio_max else '✗'}")
+    print(f"  • テクスチャ:     {texture_std:.2f} (閾値: >{texture_threshold}) {'✓' if texture_std > texture_threshold else '✗'}")
     
     # 夜間チェック
     if roi_brightness < brightness_min:
@@ -333,7 +333,7 @@ def save_annotated_image(img, tidal_result, tide_result, timestamp):
     return filename
 
 def save_to_csv(timestamp, tidal_result, tide_result, image_filename):
-    """CSV形式でデータを保存 (UTF-8とShift-JIS両方)"""
+    """CSV形式でデータを保存 (UTF-8は英語、Shift-JISは日本語)"""
     
     headers = [
         'timestamp',
@@ -350,42 +350,74 @@ def save_to_csv(timestamp, tidal_result, tide_result, image_filename):
         'image_file'
     ]
     
-    data_row = [
+    # 日本語→英語マッピング
+    status_en_map = {
+        "干潟あり": "Tidal Flat Detected",
+        "水面/潮位高": "Water Surface",
+        "夜間(解析不可)": "Night (No Analysis)"
+    }
+    
+    tide_en_map = {
+        "満潮": "High Tide",
+        "上げ潮": "Rising Tide",
+        "中潮": "Mid Tide",
+        "下げ潮": "Falling Tide",
+        "干潮": "Low Tide"
+    }
+    
+    # 英語版データ行 (UTF-8用)
+    data_row_en = [
         timestamp.isoformat(),
         tidal_result['is_tidal_flat'] if tidal_result else None,
-        tidal_result['status'] if tidal_result else None,
+        status_en_map.get(tidal_result['status'], tidal_result['status']) if tidal_result else None,
         tidal_result['confidence'] if tidal_result else None,
         f"{tidal_result['brightness_ratio']:.3f}" if tidal_result else None,
         f"{tidal_result['saturation_ratio']:.3f}" if tidal_result else None,
         f"{tidal_result['blue_ratio']:.3f}" if tidal_result else None,
         f"{tidal_result['texture_std']:.2f}" if tidal_result else None,
         f"{tide_result['tide_level']:.3f}" if tide_result else None,
-        tide_result['tide_status'] if tide_result else None,
+        tide_en_map.get(tide_result['tide_status'], tide_result['tide_status']) if tide_result else None,
         tide_result['water_line_y'] if tide_result else None,
         image_filename
     ]
     
-    # UTF-8版を保存
+    # 日本語版データ行 (Shift-JIS用)
+    data_row_ja = [
+        timestamp.isoformat(),
+        tidal_result['is_tidal_flat'] if tidal_result else None,
+        tidal_result['status'] if tidal_result else None,  # 日本語のまま
+        tidal_result['confidence'] if tidal_result else None,
+        f"{tidal_result['brightness_ratio']:.3f}" if tidal_result else None,
+        f"{tidal_result['saturation_ratio']:.3f}" if tidal_result else None,
+        f"{tidal_result['blue_ratio']:.3f}" if tidal_result else None,
+        f"{tidal_result['texture_std']:.2f}" if tidal_result else None,
+        f"{tide_result['tide_level']:.3f}" if tide_result else None,
+        tide_result['tide_status'] if tide_result else None,  # 日本語のまま
+        tide_result['water_line_y'] if tide_result else None,
+        image_filename
+    ]
+    
+    # UTF-8版を保存 (英語)
     csv_exists = os.path.exists(CSV_FILE)
     try:
         with open(CSV_FILE, 'a', newline='', encoding='utf-8') as f:
             writer = csv.writer(f, quoting=csv.QUOTE_NONNUMERIC)
             if not csv_exists:
                 writer.writerow(headers)
-            writer.writerow(data_row)
-        print(f"  ✓ CSV(UTF-8)保存: {CSV_FILE}")
+            writer.writerow(data_row_en)
+        print(f"  ✓ CSV(UTF-8/English)保存: {CSV_FILE}")
     except Exception as e:
         print(f"  ⚠️ CSV(UTF-8)保存失敗: {e}", file=sys.stderr)
     
-    # Shift-JIS版を保存
+    # Shift-JIS版を保存 (日本語)
     csv_sjis_exists = os.path.exists(CSV_FILE_SJIS)
     try:
         with open(CSV_FILE_SJIS, 'a', newline='', encoding='shift_jis', errors='replace') as f:
             writer = csv.writer(f, quoting=csv.QUOTE_NONNUMERIC)
             if not csv_sjis_exists:
                 writer.writerow(headers)
-            writer.writerow(data_row)
-        print(f"  ✓ CSV(Shift-JIS)保存: {CSV_FILE_SJIS}")
+            writer.writerow(data_row_ja)
+        print(f"  ✓ CSV(Shift-JIS/日本語)保存: {CSV_FILE_SJIS}")
     except Exception as e:
         print(f"  ⚠️ CSV(Shift-JIS)保存失敗: {e}", file=sys.stderr)
 
