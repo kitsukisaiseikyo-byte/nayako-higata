@@ -1,5 +1,5 @@
 {
-  "timestamp": "2025-11-26T16:22:47.868479+09:00",
+  "timestamp": "2025-11-26T16:41:19.806054+09:00",
   "tidal_flat": {
     "detected": true,
     "status": "干潟あり",
@@ -10,5 +10,5 @@
     "status": "中潮",
     "water_line_y": 210
   },
-  "image_file": "capture_20251126_162247.jpg"
+  "image_file": "capture_20251126_164119.jpg"
 }
