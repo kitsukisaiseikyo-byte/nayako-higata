@@ -1,2 +1,3 @@
 "timestamp","is_tidal_flat","status","confidence","brightness_ratio","saturation_ratio","blue_ratio","texture_std","tide_level","tide_status","tide_confidence","water_line_y","tide_method","tide_phase","image_file"
 "2025-11-28T12:33:06.493417+09:00",False,"Water Surface",90,"0.860","0.976","0.000","4.44","0.644","Rising Tide",62,206.0,"hough","rising","raw_20251128_123306.jpg"
+"2025-11-28T13:00:51.431895+09:00",False,"Water Surface",95,"0.853","0.986","0.000","5.67","0.533","Mid Tide",50,211,"gradient","high","raw_20251128_130051.jpg"
