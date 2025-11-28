@@ -244,11 +244,6 @@ def download_image(url):
         print(f"Error downloading image: {e}", file=sys.stderr)
         return None
 
-  """
-monitor_tidal_flat.py 完全版（2/3）
-干潟判定ロジックと水位測定
-"""
-
 # ========================================
 # 干潟判定（テクスチャ重視＋潮汐統合）
 # ========================================
@@ -529,11 +524,6 @@ def estimate_tide_level_improved(img, x_start, x_end, y_start, y_end, is_night=F
         'method': detection_method,
         'confidence': final_confidence
     }
-
-"""
-monitor_tidal_flat.py 完全版（3/3）
-画像保存、CSV保存、メイン処理
-"""
 
 # ========================================
 # 画像保存（生画像＋アノテーション）
