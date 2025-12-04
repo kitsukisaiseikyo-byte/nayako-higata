@@ -1,5 +1,5 @@
 {
-  "timestamp": "2025-12-04T16:51:10.740753+09:00",
+  "timestamp": "2025-12-04T17:02:40.241406+09:00",
   "tidal_flat": {
     "detected": false,
     "status": "水面/潮位高",
@@ -13,5 +13,5 @@
     "confidence": 50,
     "method": "gradient"
   },
-  "image_file": "raw_20251204_165110.jpg"
+  "image_file": "raw_20251204_170240.jpg"
 }
