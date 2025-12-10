@@ -1,5 +1,5 @@
 {
-  "timestamp": "2025-12-10T18:02:42.869142+09:00",
+  "timestamp": "2025-12-10T18:14:24.368352+09:00",
   "tidal_flat": {
     "detected": null,
     "status": "夜間(解析不可)",
@@ -13,5 +13,5 @@
     "confidence": 0,
     "method": ""
   },
-  "image_file": "raw_20251210_180242.jpg"
+  "image_file": "raw_20251210_181424.jpg"
 }
