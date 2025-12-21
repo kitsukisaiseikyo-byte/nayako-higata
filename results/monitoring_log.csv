@@ -1052,3 +1052,4 @@
 "2025-12-21T18:51:15.243323+09:00",True,"Tidal Flat Detected",80,"0.731","0.679","0.052","29.12","0.244","Falling Tide",50,224,"gradient","unknown","raw_20251221_185115.jpg"
 "2025-12-22T06:02:43.786041+09:00",True,"Tidal Flat Detected",85,"0.801","1.031","0.000","24.77","0.289","Falling Tide",50,222,"gradient","unknown","raw_20251222_060243.jpg"
 "2025-12-22T06:14:26.270649+09:00",True,"Tidal Flat Detected",85,"0.776","0.878","0.000","24.21","0.244","Falling Tide",50,224,"gradient","unknown","raw_20251222_061426.jpg"
+"2025-12-22T06:30:01.089471+09:00",False,"Water Surface",65,"0.635","0.418","0.135","17.92","0.556","Mid Tide",50,210,"gradient","unknown","raw_20251222_063001.jpg"
