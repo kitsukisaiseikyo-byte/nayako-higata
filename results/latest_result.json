@@ -1,5 +1,5 @@
 {
-  "timestamp": "2025-12-28T08:51:16.349928+09:00",
+  "timestamp": "2025-12-28T09:02:45.840248+09:00",
   "tidal_flat": {
     "detected": false,
     "status": "水面/潮位高",
@@ -10,8 +10,8 @@
     "level": 0.5333333333333333,
     "status": "中潮",
     "water_line_y": 211,
-    "confidence": 39,
+    "confidence": 47,
     "method": "hough"
   },
-  "image_file": "raw_20251228_085116.jpg"
+  "image_file": "raw_20251228_090245.jpg"
 }
