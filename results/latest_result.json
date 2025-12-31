@@ -1,17 +1,17 @@
 {
-  "timestamp": "2025-12-31T15:51:14.311895+09:00",
+  "timestamp": "2025-12-31T16:02:45.446285+09:00",
   "tidal_flat": {
     "detected": false,
     "status": "水面/潮位高",
-    "confidence": 90,
-    "tide_phase": "rising"
+    "confidence": 95,
+    "tide_phase": "high"
   },
   "tide": {
-    "level": 0.5666666666666667,
-    "status": "中潮",
-    "water_line_y": 209,
-    "confidence": 40,
+    "level": 0.6555555555555556,
+    "status": "上げ潮",
+    "water_line_y": 205,
+    "confidence": 82,
     "method": "hough"
   },
-  "image_file": "raw_20251231_155114.jpg"
+  "image_file": "raw_20251231_160245.jpg"
 }
