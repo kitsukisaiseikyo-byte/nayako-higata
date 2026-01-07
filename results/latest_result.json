@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-01-08T08:02:50.041968+09:00",
+  "timestamp": "2026-01-08T08:14:29.369246+09:00",
   "tidal_flat": {
     "detected": true,
     "status": "干潟あり",
@@ -7,11 +7,11 @@
     "tide_phase": "unknown"
   },
   "tide": {
-    "level": 0.5555555555555556,
-    "status": "中潮",
-    "water_line_y": 210,
+    "level": 0.2666666666666667,
+    "status": "下げ潮",
+    "water_line_y": 223,
     "confidence": 50,
     "method": "gradient"
   },
-  "image_file": "raw_20260108_080250.jpg"
+  "image_file": "raw_20260108_081429.jpg"
 }
