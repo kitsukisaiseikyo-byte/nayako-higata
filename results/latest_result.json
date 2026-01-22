@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-01-23T06:51:18.903675+09:00",
+  "timestamp": "2026-01-23T07:02:50.242861+09:00",
   "tidal_flat": {
     "detected": true,
     "status": "干潟あり",
@@ -13,5 +13,5 @@
     "confidence": 50,
     "method": "gradient"
   },
-  "image_file": "raw_20260123_065118.jpg"
+  "image_file": "raw_20260123_070250.jpg"
 }
