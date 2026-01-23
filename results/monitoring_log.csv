@@ -2667,3 +2667,4 @@
 "2026-01-23T18:30:35.296990+09:00",False,"Water Surface",65,"0.745","0.667","0.027","17.98","0.222","Falling Tide",50,225,"gradient","unknown","raw_20260123_183035.jpg"
 "2026-01-23T18:51:22.220005+09:00",True,"Tidal Flat Detected",85,"0.750","0.761","0.001","22.26","0.689","Rising Tide",50,204,"gradient","unknown","raw_20260123_185122.jpg"
 "2026-01-24T06:02:52.675905+09:00",True,"Tidal Flat Detected",85,"0.834","1.075","0.001","26.50","0.644","Rising Tide",50,206,"gradient","unknown","raw_20260124_060252.jpg"
+"2026-01-24T06:14:31.986171+09:00",True,"Tidal Flat Detected",85,"0.824","1.023","0.000","26.40","0.289","Falling Tide",50,222,"gradient","unknown","raw_20260124_061431.jpg"
