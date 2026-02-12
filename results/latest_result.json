@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-02-12T11:30:18.833108+09:00",
+  "timestamp": "2026-02-12T11:51:25.903405+09:00",
   "tidal_flat": {
     "detected": false,
     "status": "水面/潮位高",
@@ -13,5 +13,5 @@
     "confidence": 86,
     "method": "hough"
   },
-  "image_file": "raw_20260212_113018.jpg"
+  "image_file": "raw_20260212_115125.jpg"
 }
