@@ -1,17 +1,17 @@
 {
-  "timestamp": "2026-02-20T18:14:44.465516+09:00",
+  "timestamp": "2026-02-20T18:30:23.595574+09:00",
   "tidal_flat": {
-    "detected": true,
-    "status": "干潟あり",
-    "confidence": 85,
+    "detected": false,
+    "status": "水面/潮位高",
+    "confidence": 65,
     "tide_phase": "unknown"
   },
   "tide": {
-    "level": 0.6222222222222222,
-    "status": "上げ潮",
-    "water_line_y": 207,
+    "level": 0.5555555555555556,
+    "status": "中潮",
+    "water_line_y": 210,
     "confidence": 50,
     "method": "gradient"
   },
-  "image_file": "raw_20260220_181444.jpg"
+  "image_file": "raw_20260220_183023.jpg"
 }
