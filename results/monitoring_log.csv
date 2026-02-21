@@ -4019,3 +4019,4 @@
 "2026-02-22T06:30:19.333279+09:00",True,"Tidal Flat Detected",85,"0.652","0.350","0.004","33.46","0.289","Falling Tide",50,222,"gradient","unknown","raw_20260222_063019.jpg"
 "2026-02-22T06:51:32.279438+09:00",True,"Tidal Flat Detected",85,"0.734","0.524","0.008","38.78","0.267","Falling Tide",50,223,"gradient","unknown","raw_20260222_065132.jpg"
 "2026-02-22T07:03:00.489608+09:00",True,"Tidal Flat Detected",85,"0.770","0.474","0.001","39.67","0.289","Falling Tide",50,222,"gradient","unknown","raw_20260222_070300.jpg"
+"2026-02-22T07:14:43.735244+09:00",True,"Tidal Flat Detected",85,"0.825","0.505","0.001","32.70","0.644","Rising Tide",57,206.0,"hough","unknown","raw_20260222_071443.jpg"
