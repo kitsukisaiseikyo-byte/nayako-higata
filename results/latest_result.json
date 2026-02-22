@@ -1,17 +1,17 @@
 {
-  "timestamp": "2026-02-23T07:51:32.098994+09:00",
+  "timestamp": "2026-02-23T08:03:01.328550+09:00",
   "tidal_flat": {
     "detected": false,
     "status": "水面/潮位高",
-    "confidence": 65,
+    "confidence": 90,
     "tide_phase": "unknown"
   },
   "tide": {
     "level": 0.5777777777777777,
     "status": "中潮",
     "water_line_y": 209,
-    "confidence": 57,
+    "confidence": 70,
     "method": "hough"
   },
-  "image_file": "raw_20260223_075132.jpg"
+  "image_file": "raw_20260223_080301.jpg"
 }
