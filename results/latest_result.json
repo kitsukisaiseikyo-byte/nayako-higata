@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-03-02T09:14:48.101434+09:00",
+  "timestamp": "2026-03-02T09:30:26.571404+09:00",
   "tidal_flat": {
     "detected": false,
     "status": "水面/潮位高",
@@ -7,11 +7,11 @@
     "tide_phase": "unknown"
   },
   "tide": {
-    "level": 0.6444444444444444,
-    "status": "上げ潮",
-    "water_line_y": 206,
+    "level": 0.48888888888888893,
+    "status": "中潮",
+    "water_line_y": 213,
     "confidence": 50,
     "method": "gradient"
   },
-  "image_file": "raw_20260302_091448.jpg"
+  "image_file": "raw_20260302_093026.jpg"
 }
